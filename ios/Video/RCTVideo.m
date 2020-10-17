@@ -739,18 +739,37 @@ static int const RCTVideoUnset = -1;
   } else if (object == _playerViewController.contentOverlayView) {
       // when controls==true, this is a hack to reset the rootview when rotation happens in fullscreen
       if ([keyPath isEqualToString:@"frame"]) {
-
-        CGRect oldRect = [change[NSKeyValueChangeOldKey] CGRectValue];
-        CGRect newRect = [change[NSKeyValueChangeNewKey] CGRectValue];
-
-        if (!CGRectEqualToRect(oldRect, newRect)) {
-          if (CGRectEqualToRect(newRect, [UIScreen mainScreen].bounds)) {
-            NSLog(@"in fullscreen");
-
-            [self.reactViewController.view setFrame:[UIScreen mainScreen].bounds];
-            [self.reactViewController.view setNeedsLayout];
-          } else NSLog(@"not fullscreen");
-        }
+          CGRect oldRect = [change[NSKeyValueChangeOldKey] CGRectValue];
+          CGRect newRect = [change[NSKeyValueChangeNewKey] CGRectValue];
+          
+          if (!CGRectEqualToRect(oldRect, newRect)) {
+              if (CGRectEqualToRect(newRect, [UIScreen mainScreen].bounds)) {
+                  NSLog(@"in fullscreen");
+                  
+                  [self.reactViewController.view setFrame:[UIScreen mainScreen].bounds];
+                  [self.reactViewController.view setNeedsLayout];
+                  if (!_fullscreenPlayerPresented) {
+                      _fullscreenPlayerPresented = YES;
+                      if(self.onVideoFullscreenPlayerWillPresent) {
+                          self.onVideoFullscreenPlayerWillPresent(@{@"target": self.reactTag});
+                      }
+                      if(self.onVideoFullscreenPlayerDidPresent) {
+                          self.onVideoFullscreenPlayerDidPresent(@{@"target": self.reactTag});
+                      }
+                  }
+              } else {
+                  NSLog(@"not fullscreen");
+                  if (_fullscreenPlayerPresented) {
+                      _fullscreenPlayerPresented = NO;
+                      if(self.onVideoFullscreenPlayerWillDismiss) {
+                          self.onVideoFullscreenPlayerWillDismiss(@{@"target": self.reactTag});
+                      }
+                      if(self.onVideoFullscreenPlayerDidDismiss) {
+                          self.onVideoFullscreenPlayerDidDismiss(@{@"target": self.reactTag});
+                      }
+                  }
+              }
+          }
 
         return;
       }
@@ -1356,6 +1375,7 @@ static int const RCTVideoUnset = -1;
       }
       [viewController presentViewController:_playerViewController animated:true completion:^{
         _playerViewController.showsPlaybackControls = YES;
+        _playerViewController.exitsFullScreenWhenPlaybackEnds = YES;
         _fullscreenPlayerPresented = fullscreen;
         _playerViewController.autorotate = _fullscreenAutorotate;
         if(self.onVideoFullscreenPlayerDidPresent) {
